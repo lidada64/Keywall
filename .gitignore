@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+.build-home/
+.packages/
+.test-data/
+dist/
+demo/
+*.kwvault
+*.lock
+*.tmp
+.env
+.env.*
+!.env.example
+.recall/
+使用命令.md
+vault.json
+vault-*.json
