@@ -26,6 +26,7 @@ public static class Session
         if (!OperatingSystem.IsWindows()) return null;
         try
         {
+            if (Environment.GetEnvironmentVariable("KEYWALL_SESSION_DEBUG") == "1") Console.Error.WriteLine("[DEBUG-session-ci] " + action + " scope=" + PipeName(path));
             using var pipe = new NamedPipeClientStream(".", PipeName(path), PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
             pipe.Connect(150);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
@@ -35,7 +36,11 @@ public static class Session
             var reply = ReadLine(reader, 1024, timeout.Token).GetAwaiter().GetResult();
             return JsonSerializer.Deserialize<Response>(reply);
         }
-        catch (Exception e) when (e is IOException or TimeoutException or OperationCanceledException or JsonException or UnauthorizedAccessException) { return null; }
+        catch (Exception e) when (e is IOException or TimeoutException or OperationCanceledException or JsonException or UnauthorizedAccessException)
+        {
+            if (Environment.GetEnvironmentVariable("KEYWALL_SESSION_DEBUG") == "1") Console.Error.WriteLine("[DEBUG-session-ci] " + action + " failed=" + e.GetType().Name + " hresult=" + e.HResult);
+            return null;
+        }
     }
     public static bool IsUnlocked(string path) => Send(path, "status")?.State == "unlocked";
     public static bool Lock(string path) => Send(path, "lock")?.State == "locked";

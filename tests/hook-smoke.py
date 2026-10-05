@@ -53,6 +53,8 @@ with tempfile.TemporaryDirectory(prefix="hook space 'quote-", dir=root) as temp:
         assert not (repo / 'original-refs.txt').exists()
         assert call(['git', '--git-dir', remote, 'show-ref'], ok=False).stdout == ''
         kw('--password-stdin', 'login', input=phrase+'\n')
+        state = kw('status')
+        assert 'Unlocked' in state.stdout, (state.stdout, state.stderr)
         git('push', 'origin', 'main')
         assert 'refs/heads/main' in (repo / 'original-refs.txt').read_text()
         assert (repo / 'original-remote.txt').read_text().strip() == 'origin'
