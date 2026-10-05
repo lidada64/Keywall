@@ -42,7 +42,7 @@ if (-not $alreadyPresent) {
 if (-not ($env:Path -split ';' | Where-Object { $_.TrimEnd('\') -ieq $installPath.TrimEnd('\') })) {
     $env:Path = $env:Path.TrimEnd(';') + ';' + $installPath
 }
-@{ app = 'Keywall'; version = '0.1.4'; path = $installPath; installedUtc = [DateTime]::UtcNow.ToString('o'); executableSha256 = (Get-FileHash -LiteralPath (Join-Path $installPath 'keywall.exe')).Hash.ToLowerInvariant() } |
+@{ app = 'Keywall'; version = '0.1.5'; path = $installPath; installedUtc = [DateTime]::UtcNow.ToString('o'); executableSha256 = (Get-FileHash -LiteralPath (Join-Path $installPath 'keywall.exe')).Hash.ToLowerInvariant() } |
     ConvertTo-Json | Set-Content -LiteralPath $marker -Encoding utf8
 & (Join-Path $installPath 'keywall.exe') version
 if ($LASTEXITCODE -ne 0) { throw 'Installed executable check failed.' }

@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix="keywall-smoke-", dir=exe.parent) as fol
         assert secret not in p.stdout + p.stderr, "plaintext leaked to output"
         return p
 
-    assert "0.1.4" in subprocess.check_output([str(exe), "version"], env=env, text=True)
+    assert "0.1.5" in subprocess.check_output([str(exe), "version"], env=env, text=True)
     run(["init"], master_phrase + "\n")
     run(["add", "smoke/dev", "--stdin"], master_phrase + "\n" + secret + "\n")
     assert "smoke/dev" in run(["find", "smoke"], master_phrase + "\n").stdout

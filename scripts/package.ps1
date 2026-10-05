@@ -21,13 +21,13 @@ try {
         if (-not (Test-Path -LiteralPath $source)) { throw "Runtime license file missing: $legal" }
         Copy-Item -LiteralPath $source -Destination (Join-Path $outputDir "DOTNET-$legal")
     }
-    Set-Content -LiteralPath (Join-Path $outputDir 'BUILD.txt') -Value "Keywall 0.1.4`nRuntime: .NET $RuntimeVersion win-x64`nUnsigned executable; independently review before trusting it." -Encoding utf8
-    $zip = Join-Path $projectRoot 'dist/keywall-0.1.4-win-x64.zip'
+    Set-Content -LiteralPath (Join-Path $outputDir 'BUILD.txt') -Value "Keywall 0.1.5`nRuntime: .NET $RuntimeVersion win-x64`nUnsigned executable; independently review before trusting it." -Encoding utf8
+    $zip = Join-Path $projectRoot 'dist/keywall-0.1.5-win-x64.zip'
     # A fixed allowlist prevents stale files, test fixtures or debug symbols entering the release.
     $assets = @('keywall.exe','kw.exe','README.md','SECURITY.md','LICENSE','DOTNET-LICENSE.TXT','DOTNET-THIRD-PARTY-NOTICES.TXT','BUILD.txt') | ForEach-Object { Join-Path $outputDir $_ }
     Compress-Archive -LiteralPath $assets -DestinationPath $zip -Force
     $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-    Set-Content -LiteralPath "$zip.sha256" -Value "$hash  keywall-0.1.4-win-x64.zip" -Encoding ascii
+    Set-Content -LiteralPath "$zip.sha256" -Value "$hash  keywall-0.1.5-win-x64.zip" -Encoding ascii
     Write-Output $zip
-    Write-Output "$hash  keywall-0.1.4-win-x64.zip"
+    Write-Output "$hash  keywall-0.1.5-win-x64.zip"
 } finally { Pop-Location }

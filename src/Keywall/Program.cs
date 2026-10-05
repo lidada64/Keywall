@@ -24,7 +24,7 @@ public static class Program
         string command = a.NextOr("help");
         if (help) { Help(command); return 0; }
         if (command == "help") { Help(a.NextOr("help")); a.End(); return 0; }
-        if (command == "version") { a.End(); Console.WriteLine("keywall 0.1.4"); return 0; }
+        if (command == "version") { a.End(); Console.WriteLine("keywall 0.1.5"); return 0; }
         if (command == "hook")
         {
             var action = a.Next(); var repo = a.Option("--repo"); bool global = a.Flag("--global"); a.End();
@@ -217,7 +217,7 @@ public static class Program
                 """); return;
         }
         Console.WriteLine("""
-        keywall 0.1.4 — local CLI key vault and upload checks
+        keywall 0.1.5 — local CLI key vault and upload checks
         Global: --vault PATH, --no-session, --password-stdin (trusted input pipe only)
         login | unlock                    Unlock once for this Windows logon session
         lock | logout | status            Lock the session or inspect its state

@@ -26,9 +26,9 @@ public static class Session
         if (!OperatingSystem.IsWindows()) return null;
         try
         {
-            if (Environment.GetEnvironmentVariable("KEYWALL_SESSION_DEBUG") == "1") Console.Error.WriteLine("[DEBUG-session-ci] " + action + " scope=" + PipeName(path));
-            using var pipe = new NamedPipeClientStream(".", PipeName(path), PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            using var pipe = new NamedPipeClientStream(".", PipeName(path), PipeDirection.InOut, PipeOptions.Asynchronous);
             pipe.Connect(150);
+            WindowsPipes.ValidateServer(pipe);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, true) { AutoFlush = true };
             using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, true);
@@ -37,10 +37,7 @@ public static class Session
             return JsonSerializer.Deserialize<Response>(reply);
         }
         catch (Exception e) when (e is IOException or TimeoutException or OperationCanceledException or JsonException or UnauthorizedAccessException)
-        {
-            if (Environment.GetEnvironmentVariable("KEYWALL_SESSION_DEBUG") == "1") Console.Error.WriteLine("[DEBUG-session-ci] " + action + " failed=" + e.GetType().Name + " hresult=" + e.HResult);
-            return null;
-        }
+        { return null; }
     }
     public static bool IsUnlocked(string path) => Send(path, "status")?.State == "unlocked";
     public static bool Lock(string path) => Send(path, "lock")?.State == "locked";
@@ -63,8 +60,7 @@ public static class Session
             commandLine += " \"" + typeof(Program).Assembly.Location + "\"";
         var bootstrapName = "keywall-bootstrap-" + Guid.NewGuid().ToString("N");
         commandLine += " _session " + bootstrapName;
-        using var bootstrapPipe = new NamedPipeServerStream(bootstrapName, PipeDirection.Out, 1, PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | PipeOptions.FirstPipeInstance);
+        using var bootstrapPipe = WindowsPipes.CreateServer(bootstrapName, PipeDirection.Out);
         // Inheriting ANY console/redirected handles keeps callers' output pipes open indefinitely.
         // CreateProcess(false) plus a private bootstrap pipe avoids inheriting those handles.
         var startup = new StartupInfo { Size = Marshal.SizeOf<StartupInfo>() };
@@ -75,6 +71,7 @@ public static class Session
         {
             using var startupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             bootstrapPipe.WaitForConnectionAsync(startupTimeout.Token).GetAwaiter().GetResult();
+            WindowsPipes.ValidateClient(bootstrapPipe);
             if (!GetNamedPipeClientProcessId(bootstrapPipe.SafePipeHandle.DangerousGetHandle(), out var clientPid) || clientPid != child.ProcessId)
                 throw new UserError("Unexpected unlock bootstrap client.");
             using (var writer = new StreamWriter(bootstrapPipe, new UTF8Encoding(false), 1024, true) { AutoFlush = true })
@@ -102,22 +99,23 @@ public static class Session
             if (!OperatingSystem.IsWindows()) return 1;
             if (!System.Text.RegularExpressions.Regex.IsMatch(bootstrapName, @"\Akeywall-bootstrap-[0-9a-f]{32}\z")) return 1;
             using var startupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            using var bootstrapPipe = new NamedPipeClientStream(".", bootstrapName, PipeDirection.In, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            using var bootstrapPipe = new NamedPipeClientStream(".", bootstrapName, PipeDirection.In, PipeOptions.Asynchronous);
             await bootstrapPipe.ConnectAsync(startupTimeout.Token);
+            WindowsPipes.ValidateServer(bootstrapPipe);
             using var bootstrapReader = new StreamReader(bootstrapPipe, Encoding.UTF8, false, 1024, true);
             var bootstrap = JsonSerializer.Deserialize<Bootstrap>(await ReadLine(bootstrapReader, 16384, startupTimeout.Token));
             bootstrapPipe.Close();
             if (bootstrap is null || bootstrap.Salt.Length > 64) return 1;
             key = Convert.FromBase64String(bootstrap.Key);
             if (key.Length != 32 || Convert.FromBase64String(bootstrap.Salt).Length != 16) return 1;
-            using var server = new NamedPipeServerStream(PipeName(bootstrap.Path), PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | PipeOptions.FirstPipeInstance);
+            using var server = WindowsPipes.CreateServer(PipeName(bootstrap.Path), PipeDirection.InOut);
             while (true)
             {
                 await server.WaitForConnectionAsync();
                 bool stop = false;
                 try
                 {
+                    WindowsPipes.ValidateClient(server);
                     using var clientTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
                     using var reader = new StreamReader(server, Encoding.UTF8, false, 1024, true);
                     using var writer = new StreamWriter(server, new UTF8Encoding(false), 1024, true) { AutoFlush = true };
@@ -128,7 +126,7 @@ public static class Session
                     else if (request?.Action == "get" && request.Salt == bootstrap.Salt) response = new("unlocked", Convert.ToBase64String(key));
                     await writer.WriteLineAsync(JsonSerializer.Serialize(response).AsMemory(), clientTimeout.Token);
                 }
-                catch (Exception e) when (e is IOException or OperationCanceledException or JsonException) { }
+                catch (Exception e) when (e is IOException or OperationCanceledException or JsonException or UnauthorizedAccessException) { }
                 finally { if (server.IsConnected) server.Disconnect(); }
                 if (stop) return 0;
             }

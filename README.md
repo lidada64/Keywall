@@ -2,7 +2,7 @@
 
 本地 CLI 密钥保险库与上传前检查工具，命令可简写为 `kw`。将 key 存入加密保险库，通过别名使用，并在 Git 推送或文件上传前检查密钥泄露。独立运行，不需要 1Password、云账户或第三方密码管理器。
 
-当前版本：**0.1.4** · [更新记录](CHANGELOG.md) · [安全说明](SECURITY.md) · [MIT 许可证](LICENSE)
+当前版本：**0.1.5** · [更新记录](CHANGELOG.md) · [安全说明](SECURITY.md) · [MIT 许可证](LICENSE)
 
 适合以终端和代码 Agent 为主的工作流：隐藏输入 key、按名称查找、向可信子程序提供指定 key，以及为普通 `git push` 安装全局或单仓库检查。
 
@@ -139,7 +139,7 @@ keywall target add api https://uploads.example.com/blob --key upload/prod --head
 ## 保险库与恢复
 
 - 默认：PBKDF2-HMAC-SHA256（600000 次、随机 16 字节 salt）派生 256 位 key；AES-GCM、随机 12 字节 nonce、16 字节认证 tag。使用 .NET 自带实现，不自创算法。格式固定版本与认证关联数据。
-- Windows 会话代理仅在内存中持有派生 key，通过限定当前用户的命名管道提供解锁；范围绑定当前用户 SID、Windows 登录会话和保险库路径。每条命令重新读取并验证加密保险库，不缓存条目副本。不同保险库的会话分别解锁和锁定。
+- Windows 会话代理仅在内存中持有派生 key，命名管道 ACL 仅允许实际用户 SID，并在交换数据前验证双方进程的用户和 Windows 会话，拒绝远程管道连接；范围绑定当前用户 SID、Windows 登录会话和保险库路径。每条命令重新读取并验证加密保险库，不缓存条目副本。不同保险库的会话分别解锁和锁定。
 - 保存使用临时加密文件、落盘 flush 和原子替换；独占锁避免并发覆盖。Windows 上依赖文件系统与账号权限，不会自动重写 ACL。
 - `keywall init --windows`：Windows 用户范围 DPAPI。无需每次输入主密码，但同一用户权限的程序可能解密；不能宣称 Agent 看不到 key。该模式仅绑定当前 Windows 用户环境，不提供可移植备份。
 - 主密码模式支持加密备份。备份不覆盖已有文件；路径含空格时应加引号。

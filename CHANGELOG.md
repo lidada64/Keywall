@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 — 2026-10-05
+
+- Fix Git hook session access on Windows CI: .NET CurrentUserOnly compares TokenOwner, which can differ between processes running as the same user.
+- Create named pipes with a protected DACL granting only the actual TokenUser SID access; validate client/server process user and Windows session before exchanging key material. Remote pipe clients are rejected.
+- Keep the hook-smoke login-state assertion and remove temporary CI diagnostics. No password or key is written to disk or logs.
+
 ## 0.1.4 — 2026-10-05
 
 - Fix clean pushes being blocked by secret blobs already reachable from the remote branch: both push and pre-push now inspect outgoing objects relative to the advertised remote ref.
